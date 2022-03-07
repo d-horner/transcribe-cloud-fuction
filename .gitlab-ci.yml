@@ -1,0 +1,255 @@
+image: docker:$DOCKER_VERSION
+services:
+  - docker:$DOCKER_VERSION-dind
+
+stages:
+  - lint
+  - test
+  - staging
+  - open_mr
+  - production
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_VERSION : 19.03.4
+  PRIVATE_TOKEN: ${PRIVATE_TOKEN}
+  GCP_STAGING_PROJECT: $GCP_STAGING_PROJECT
+  GCP_STAGING_REGION: $GCP_STAGING_REGION
+  GCP_STAGING_FUNCTION_NAME: $GCP_STAGING_FUNCTION_NAME
+  GCP_PRODUCTION_PROJECT: $GCP_PRODUCTION_PROJECT
+  GCP_PRODUCTION_REGION: $GCP_PRODUCTION_REGION
+  GCP_PRODUCTION_FUNCTION_NAME: $GCP_PRODUCTION_FUNCTION_NAME  
+  GCLOUD_SERVICE_ACCOUNT_STAGING_FUNCTION: $GCLOUD_SERVICE_ACCOUNT_STAGING_FUNCTION
+  GCLOUD_SERVICE_KEY_STAGING_FUNCTION: $GCLOUD_SERVICE_KEY_STAGING_FUNCTION
+  GCLOUD_SERVICE_ACCOUNT_PRODUCTION_FUNCTION: $GCLOUD_SERVICE_ACCOUNT_PRODUCTION_FUNCTION
+  GCLOUD_SERVICE_KEY_PRODUCTION_FUNCTION: $GCLOUD_SERVICE_KEY_PRODUCTION_FUNCTION
+  MAILGUN_DOMAIN: $MAILGUN_DOMAIN
+  MAILGUN_API_KEY: $MAILGUN_API_KEY
+  SEND_FROM_EMAIL: $SEND_FROM_EMAIL
+  APPS_SCRIPT_TOKEN: $APPS_SCRIPT_TOKEN
+  GITLAB_PRIVATE_TOKEN: ${GITLAB_PRIVATE_TOKEN}
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  key:
+    files:
+      - poetry.lock
+      - .gitlab-ci.yml
+    prefix: $CI_COMMIT_REF_SLUG
+  paths:
+    - .venv
+    - .cache/pip
+
+flake8:
+  stage: lint
+  image: python:3.9
+  variables:
+    MAILGUN_DOMAIN: $MAILGUN_DOMAIN
+    MAILGUN_API_KEY: $MAILGUN_API_KEY
+    SEND_FROM_EMAIL: $SEND_FROM_EMAIL
+  tags:
+    - docker
+  services:
+    - docker:dind
+  before_script:
+    - pip install poetry
+    - poetry config virtualenvs.in-project true
+    - poetry install --no-root
+    - cp .env.yaml.template .env.yaml
+    - sed -i "s|SEND-FROM-EMAIL|$SEND_FROM_EMAIL|g" .env.yaml
+    - sed -i "s|MAILGUN-DOMAIN|$MAILGUN_DOMAIN|g" .env.yaml
+    - sed -i "s|MAILGUN-API-KEY|$MAILGUN_API_KEY|g" .env.yaml
+    - sed -i "s|APPS-SCRIPT-TOKEN|$APPS_SCRIPT_TOKEN|g" .env.yaml
+  script:
+    - poetry run flake8
+    - rm -rf .env.yaml || true
+  interruptible: true
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  except:
+    - main
+
+
+pylint:
+  stage: lint
+  image: python:3.9
+  variables:
+    MAILGUN_DOMAIN: $MAILGUN_DOMAIN
+    MAILGUN_API_KEY: $MAILGUN_API_KEY
+    SEND_FROM_EMAIL: $SEND_FROM_EMAIL
+  tags:
+    - docker
+  services:
+    - docker:dind
+  before_script:
+    - pip install poetry
+    - poetry config virtualenvs.in-project true
+    - poetry install --no-root
+    - cp .env.yaml.template .env.yaml
+    - sed -i "s|SEND-FROM-EMAIL|$SEND_FROM_EMAIL|g" .env.yaml
+    - sed -i "s|MAILGUN-DOMAIN|$MAILGUN_DOMAIN|g" .env.yaml
+    - sed -i "s|MAILGUN-API-KEY|$MAILGUN_API_KEY|g" .env.yaml
+    - sed -i "s|APPS-SCRIPT-TOKEN|$APPS_SCRIPT_TOKEN|g" .env.yaml
+  script:
+    - poetry run pylint *.py
+    - rm -rf .env.yaml || true
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  interruptible: true
+  except:
+    - main
+
+
+pytest-cov:
+  stage: test
+  image: python:3.9
+  variables:
+    MAILGUN_DOMAIN: $MAILGUN_DOMAIN
+    MAILGUN_API_KEY: $MAILGUN_API_KEY
+    SEND_FROM_EMAIL: $SEND_FROM_EMAIL
+    GOOGLE_APPLICATION_CREDENTIALS: '.gcloud-logging-credentials'
+  tags:
+    - docker
+  services:
+    - docker:dind
+  before_script:
+    - cat "$GCLOUD_SERVICE_KEY_STAGING_FUNCTION" > "./.gcloud-logging-credentials"
+    - pip install poetry
+    - poetry config virtualenvs.in-project true
+    - poetry install --no-root
+    - cp .env.yaml.template .env.yaml
+    - sed -i "s|SEND-FROM-EMAIL|$SEND_FROM_EMAIL|g" .env.yaml
+    - sed -i "s|MAILGUN-DOMAIN|$MAILGUN_DOMAIN|g" .env.yaml
+    - sed -i "s|MAILGUN-API-KEY|$MAILGUN_API_KEY|g" .env.yaml
+    - sed -i "s|APPS-SCRIPT-TOKEN|$APPS_SCRIPT_TOKEN|g" .env.yaml
+  script:
+    - poetry run pytest --cov
+    - poetry run coverage xml
+    - rm -rf .env.yaml
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  interruptible: true
+  artifacts:
+    reports:
+      cobertura: coverage.xml
+  except:
+    - main
+
+
+deploy_to_staging:
+  stage: staging
+  image: python:3.9-slim-buster
+  variables:
+    APP_ENV: staging
+  tags:
+    - docker
+  before_script:
+    - apt-get -q update && apt-get -yfq install curl git gnupg2
+    - echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -qy && apt-get install google-cloud-sdk -yqf
+    - cat $GCLOUD_SERVICE_KEY_STAGING_FUNCTION > /tmp/gitlab-deploy-staging-function-sa.json
+    - gcloud auth activate-service-account $GCLOUD_SERVICE_ACCOUNT_STAGING_FUNCTION --key-file /tmp/gitlab-deploy-staging-function-sa.json
+    - pip install poetry
+    - poetry config virtualenvs.in-project true
+    - cp .env.yaml.template .env.yaml
+    - sed -i "s|SEND-FROM-EMAIL|$SEND_FROM_EMAIL|g" .env.yaml
+    - sed -i "s|MAILGUN-DOMAIN|$MAILGUN_DOMAIN|g" .env.yaml
+    - sed -i "s|MAILGUN-API-KEY|$MAILGUN_API_KEY|g" .env.yaml
+    - sed -i "s|APPS-SCRIPT-TOKEN|$APPS_SCRIPT_TOKEN|g" .env.yaml
+    - cp .env.template .env.staging
+    - sed -i "s|GCP-PROJECT|$GCP_STAGING_PROJECT|g" .env.staging
+    - sed -i "s|GCP-REGION|$GCP_STAGING_REGION|g" .env.staging
+    - sed -i "s|GCP-FUNCTION-NAME|$GCP_STAGING_FUNCTION_NAME|g" .env.staging
+  script:
+    - bash deploy-staging.sh
+    - rm -rf .env.yaml .env.staging
+    - rm -rf /tmp/gitlab-deploy-staging-function-sa.json || true
+  interruptible: true
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  environment:
+    name: staging/${CI_COMMIT_REF_NAME}
+  dependencies:
+    - pytest-cov
+  only:
+    - branches
+    - merge_requests // prevent deployment from running on mr.
+  except:
+    - main
+
+
+open_merge_request:
+  image: alpine:3.14
+  variables:
+    HOST: "https://allied.sh/api/v4/projects/"
+    REMOVE_BRANCH_AFTER_MERGE: "true"
+    COMMIT_PREFIX: "MR"
+  stage: open_mr
+  dependencies:
+    - deploy_to_staging
+  except:
+    - main
+  before_script:
+    - apk update
+    - apk upgrade
+    - apk add bash curl grep jq
+    - chmod +x .gitlab-mr.sh
+    - export
+  script:
+    - bash .gitlab-mr.sh
+
+
+deploy_to_production:
+  image: python:3.9-slim-buster
+  stage: production
+  variables:
+    APP_ENV: production
+  before_script:
+    - apt-get -q update && apt-get -yfq install curl git gnupg2
+    - echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -qy && apt-get install google-cloud-sdk -yqf
+    - cat $GCLOUD_SERVICE_KEY_PRODUCTION_FUNCTION > /tmp/gitlab-deploy-function-sa.json
+    - gcloud auth activate-service-account $ --key-file /tmp/gitlab-deploy-function-sa.json
+    - pip install poetry
+    - poetry config virtualenvs.in-project true
+    - cp .env.yaml.template .env.yaml
+    - sed -i "s|SEND-FROM-EMAIL|$SEND_FROM_EMAIL|g" .env.yaml
+    - sed -i "s|MAILGUN-DOMAIN|$MAILGUN_DOMAIN|g" .env.yaml
+    - sed -i "s|MAILGUN-API-KEY|$MAILGUN_API_KEY|g" .env.yaml
+    - sed -i "s|APPS-SCRIPT-TOKEN|$APPS_SCRIPT_TOKEN|g" .env.yaml
+    - cp .env.template .env.production
+    - sed -i "s|GCP-PROJECT|$GCP_PRODUCTION_PROJECT|g" .env.production
+    - sed -i "s|GCP-REGION|$GCP_PRODUCTION_REGION|g" .env.production
+    - sed -i "s|GCP-FUNCTION-NAME|$GCP_PRODUCTION_FUNCTION_NAME|g" .env.production    
+  script:
+    - echo "$GCLOUD_SERVICE_KEY_PRODUCTION_FUNCTION"
+    - bash deploy-production.sh
+    - rm -rf .env.yaml .env.production
+    - rm -rf /tmp/gitlab-deploy-function-sa.json || true
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  environment:
+    name: production/${CI_COMMIT_REF_NAME}
+  when: manual
+  dependencies:
+    - deploy_to_staging
+  only:
+    - main
+  tags:
+    - docker

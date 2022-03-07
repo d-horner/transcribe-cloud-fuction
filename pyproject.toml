@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "transcribe-cloud-function"
+version = "0.1.0"
+description = "Transcribe audio and send email"
+authors = ["Daniel Horner <d.horner@edwardsgrounds.co.uk>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+google-cloud-logging = "^2.3.1"
+google-cloud-speech = "^2.12.0"
+ffmpeg-python = "^0.2.0"
+Flask = "^2.0.3"
+requests = "^2.27.1"
+PyYAML = "^6.0"
+pydantic = "^1.9.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0.1"
+flake8 = "^4.0.1"
+pylint = "^2.12.2"
+isort = "^5.10.1"
+coverage = "^6.3.2"
+pre-commit = "^2.17.0"
+black = "^22.1.0"
+autoflake = "^1.4"
+pytest-cov = "^3.0.0"
+bandit = "^1.7.2"
+requests-mock = "^1.9.3"
+functions-framework = "^3.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.bandit]
+exclude_dirs = [".venv", "tests"]

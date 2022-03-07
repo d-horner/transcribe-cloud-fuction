@@ -1,0 +1,2 @@
+[run]
+omit = *migrations*, test_*, *tests*, */virtualenvs/*, */.google-cloud-sdk/*, */google-cloud-sdk/*, */googlecloudsdk/*, */.venv/*

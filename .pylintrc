@@ -1,0 +1,28 @@
+[MASTER]
+# Python code to execute, usually for sys.path manipulation such as pygtk.require().
+init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc()))"
+
+[MESSAGES CONTROL]
+# I0011 Warning locally suppressed using disable-msg
+disable=
+    C0411, # import order
+    I0011,
+    W0404, # reimported
+    W0703, # catchall
+    no-member,
+    subprocess-run-check,
+    missing-docstring,  # We don't want docstring everywhere
+    C0330, # black handle this
+    too-few-public-methods,  # More harmful than beneficial in django/flask project
+    too-many-arguments,
+    redefined-outer-name, # Redefined out of scope
+    line-too-long,  # Ignore comments, black handles code line length.
+
+ignore=migrations
+
+[BASIC]
+# Good variable names which should always be accepted, separated by a comma.
+good-names=i,j,k,ex,Run,_,f,e,maxDiff
+
+[FORMAT]
+max-line-length=120
