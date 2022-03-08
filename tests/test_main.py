@@ -12,6 +12,7 @@ from main import (
     get_audio_length,
     get_phone_number,
     get_transcript,
+    load_settings_from_environment,
     load_settings_from_yaml,
     send_email,
 )
@@ -156,13 +157,16 @@ def test_post_route__failure__missing_file(test_client):
 
 
 def test_post_route__failure__file_type_not_allowed(test_client):
-    load_settings_from_yaml(".env.yaml")
+    settings = load_settings_from_environment()
     test_file = open("tests/test_file.pdf", "rb")
     response = test_client.post(
         "/",
         data={
-            "token": "",
+            "token": settings.APPS_SCRIPT_TOKEN,
             "file": test_file,
+            "subject": "test",
+            "from": "test@edwardsgrounds.co.uk",
+            "group": "test-branch@edwardsgrounds.co.uk",
         },
     )
     test_file.close()
@@ -171,12 +175,13 @@ def test_post_route__failure__file_type_not_allowed(test_client):
 
 def test_post_route__success(test_client):
     with patch("main.transcribe") as mock_post:
+        settings = load_settings_from_environment()
         test_file = open("tests/test_audio.mp3", "rb")
         mock_post.return_value.status_code = 200
         response = test_client.post(
             "/",
             data={
-                "token": "",
+                "token": settings.APPS_SCRIPT_TOKEN,
                 "file": test_file,
                 "subject": "test",
                 "from": "test@edwardsgrounds.co.uk",
