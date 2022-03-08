@@ -122,8 +122,7 @@ pytest-cov:
   services:
     - docker:dind
   before_script:
-    - echo "$GCLOUD_SERVICE_KEY_STAGING_FUNCTION"
-    - cp "$GCLOUD_SERVICE_KEY_STAGING_FUNCTION" > "./.gcloud-logging-credentials"
+    - echo "$GCLOUD_SERVICE_KEY_STAGING_FUNCTION" > "./.gcloud-logging-credentials"
     - pip install poetry
     - poetry config virtualenvs.in-project true
     - poetry install --no-root
