@@ -130,6 +130,7 @@ gcloud services enable cloudbuild.googleapis.com
 gcloud services enable logging.googleapis.com
 gcloud services enable appengine.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
+gcloud services enable speech.googleapis.com
 ~~~~
 
 
@@ -179,8 +180,12 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 gcloud iam service-accounts add-iam-policy-binding $PROJECT_ID@appspot.gserviceaccount.com \
  --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
  --role=roles/iam.serviceAccountUser
+# Add SA roles for speech-to-text
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+ --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
+ --role=roles/speech.client
 # Add SA roles for Log Writer
-gcloud iam service-accounts add-iam-policy-binding $PROJECT_ID \
+gcloud projects add-iam-policy-binding $PROJECT_ID \
  --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
  --role=roles/logging.logWriter
 ~~~~
