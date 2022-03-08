@@ -8,6 +8,7 @@ disable=
     C0103, # invalid module name
     C0411, # import order
     I0011,
+    R0911, # too many return statements
     W0404, # reimported
     W0703, # catchall
     no-member,

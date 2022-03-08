@@ -233,13 +233,27 @@ def transcribe(req: Request):  # pylint: disable=R0914
             except Exception as e:  # pragma: no cover
                 logging.error("Error: Email failed to send - %s", e)
                 return (
-                    json.dumps({"success": False, "message": "An error occured."}),
+                    json.dumps(
+                        {
+                            "success": False,
+                            "message": "An error occured whilst sending email.",
+                        }
+                    ),
                     400,
                     {
                         "ContentType": "application/json",
                         "Access-Control-Allow-Origin": settings.ACCESS_CONTROL_ORIGIN,
                     },
                 )
+        else:
+            return (
+                json.dumps({"success": False, "message": "Unsupported Media Type."}),
+                415,
+                {
+                    "ContentType": "application/json",
+                    "Access-Control-Allow-Origin": settings.ACCESS_CONTROL_ORIGIN,
+                },
+            )
     if req.method == "GET":
         return (
             json.dumps({"success": True, "message": "Get success"}),

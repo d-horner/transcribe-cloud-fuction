@@ -156,17 +156,17 @@ def test_post_route__failure__missing_file(test_client):
 
 
 def test_post_route__failure__file_type_not_allowed(test_client):
-    settings = load_settings_from_yaml(".env.yaml")
+    load_settings_from_yaml(".env.yaml")
     test_file = open("tests/test_file.pdf", "rb")
     response = test_client.post(
         "/",
         data={
-            "token": settings.APPS_SCRIPT_TOKEN,
+            "token": "",
             "file": test_file,
         },
     )
     test_file.close()
-    assert response.status_code == 302  # nosec
+    assert response.status_code == 415  # nosec
 
 
 def test_post_route__success(test_client):
@@ -179,7 +179,7 @@ def test_post_route__success(test_client):
                 "token": "",
                 "file": test_file,
                 "subject": "test",
-                "from": "d.horner@edwardsgrounds.co.uk",
+                "from": "test@edwardsgrounds.co.uk",
                 "group": "test-branch@edwardsgrounds.co.uk",
             },
         )
