@@ -26,11 +26,6 @@ repos:
     hooks:
       - id: black
 
-  # - repo: https://github.com/timothycrosley/isort
-  #   rev: 5.11.0
-  #   hooks:
-  #     - id: isort
-
   - repo: https://github.com/pycqa/flake8
     rev: 4.0.1
     hooks:
@@ -54,12 +49,3 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.0
-    hooks:
-      - id: bandit
-        language_version: python3
-        args:
-        - -s
-        - B404,B603
