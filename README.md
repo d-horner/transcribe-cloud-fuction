@@ -216,6 +216,8 @@ Remove or alter `HOST: "https://allied.sh/api/v4/projects/"` to `https://gitlab.
 
 This function was written with the purpose of using a time based Google App Script trigger to query unread emails with mp3/wav attachments, extract *UK* phone numbers (other countries and formats would require modification of the regex in `get_phone_number()`), get the transcript and email the content within the same Google Group thread.
 
+Audio files are transcribed synchronously via the Speech-To-Text API, thus they are limited to 60 seconds of audio. Audio is trimmed for files exceeding 60 seconds due to the intended use case. Refer to [https://cloud.google.com/speech-to-text/docs/async-recognize](https://cloud.google.com/speech-to-text/docs/async-recognize) for transcription of longer files.
+
 Mailgun is hardcoded within the script, although any transactional ESP could be substituted.
 
 

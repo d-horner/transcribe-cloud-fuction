@@ -52,8 +52,8 @@ def test_get_audio_length__failure():
 def test_get_transcript__audio():
     transcript = get_transcript(decode_audio(os.path.join("tests/test_audio.mp3")))
     assert (
-        transcript
-        == "🤖 Transcript: to listen to the message please hold or to save it just hang up  hi"
+        transcript.upper()
+        == "🤖 Transcript: to listen to the message, please hold or to save it just hang up.  hi".upper()
     )  # nosec
 
 

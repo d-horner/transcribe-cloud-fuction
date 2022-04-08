@@ -159,7 +159,8 @@ deploy_to_staging:
   before_script:
     - apt-get -q update && apt-get -yfq install curl git gnupg2
     - echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -qy && apt-get install google-cloud-sdk -yqf
-    - gcloud auth activate-service-account "$GCLOUD_SERVICE_ACCOUNT_STAGING_FUNCTION" --key-file "$GCLOUD_SERVICE_KEY_STAGING_FUNCTION"
+    - echo "$GCLOUD_SERVICE_KEY_STAGING_FUNCTION" > /tmp/gitlab-deploy-storage-sa.json
+    - gcloud auth activate-service-account "$GCLOUD_SERVICE_ACCOUNT_STAGING_FUNCTION" --key-file /tmp/gitlab-deploy-storage-sa.json
     - pip install poetry
     - poetry config virtualenvs.in-project true
     - cp .env.yaml.template .env.yaml
@@ -174,7 +175,7 @@ deploy_to_staging:
   script:
     - bash deploy-staging.sh
     - rm -rf .env.yaml .env.staging
-    - rm -rf "$GCLOUD_SERVICE_KEY_STAGING_FUNCTION" || true
+    - rm -rf /tmp/gitlab-deploy-storage-sa.json || true
   interruptible: true
   retry:
     max: 2
@@ -221,7 +222,8 @@ deploy_to_production:
   before_script:
     - apt-get -q update && apt-get -yfq install curl git gnupg2
     - echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -qy && apt-get install google-cloud-sdk -yqf
-    - gcloud auth activate-service-account "$GCLOUD_SERVICE_ACCOUNT_PRODUCTION_FUNCTION" --key-file "$GCLOUD_SERVICE_KEY_PRODUCTION_FUNCTION"
+    - echo "$GCLOUD_SERVICE_KEY_PRODUCTION_FUNCTION" > /tmp/gitlab-deploy-storage-sa.json
+    - gcloud auth activate-service-account "$GCLOUD_SERVICE_ACCOUNT_PRODUCTION_FUNCTION" --key-file /tmp/gitlab-deploy-storage-sa.json
     - pip install poetry
     - poetry config virtualenvs.in-project true
     - cp .env.yaml.template .env.yaml
@@ -236,7 +238,7 @@ deploy_to_production:
   script:
     - bash deploy-production.sh
     - rm -rf .env.yaml .env.production
-    - rm -rf "$GCLOUD_SERVICE_KEY_PRODUCTION_FUNCTION" || true
+    - rm -rf /tmp/gitlab-deploy-storage-sa.json || true
   retry:
     max: 2
     when:

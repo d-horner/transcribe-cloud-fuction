@@ -28,6 +28,7 @@ htmlcov
 pyproject.toml
 __init__.py
 README.md
+LICENCE
 setup.cfg
 tests
 .venv

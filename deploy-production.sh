@@ -54,7 +54,7 @@ gcloud functions deploy \
   --entry-point=transcribe \
   --runtime=python39 \
   --memory=256MB \
-  --timeout=30s \
+  --timeout=120s \
   --env-vars-file=$ENV_YAML_FILE \
   --allow-unauthenticated \
   --trigger-http

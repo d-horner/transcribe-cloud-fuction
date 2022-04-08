@@ -194,9 +194,6 @@ def transcribe(req: Request):  # pylint: disable=R0914
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
 
-            audio_data = decode_audio(
-                os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            )
             try:
                 audio_length = str(
                     get_audio_length(
@@ -207,8 +204,22 @@ def transcribe(req: Request):  # pylint: disable=R0914
                 audio_length = "audio length not detected"
                 logging.error("Error detecting audio length: %s", e)
 
+            if float(audio_length) <= 60:
+                audio_data = decode_audio(
+                    os.path.join(app.config["UPLOAD_FOLDER"], filename),
+                )
+                transcription = get_transcript(audio_data)
+            else:
+                audio_data = decode_audio(
+                    os.path.join(app.config["UPLOAD_FOLDER"], filename),
+                    ss="0",
+                    t="60",
+                )  # pragma: no cover
+                transcription = (
+                    "🤖 First 60 seconds (voicemail >60 seconds): \n"
+                    + get_transcript(audio_data)
+                )  # pragma: no cover
             phone_number = get_phone_number(str(request.form.get("subject")))
-            transcription = get_transcript(audio_data)
             formatted_message = f"Voicemail from: {phone_number}\nLength: {audio_length}s\n{transcription}"
 
             try:
