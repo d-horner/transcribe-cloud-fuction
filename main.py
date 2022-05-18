@@ -52,7 +52,7 @@ def send_email(
     }
     response = requests.post(
         # Mailgun API uses EU URL, if non-eu domain change to https://api.mailgun.net/v3/<DOMAIN>/messages
-        "https://api.eu.mailgun.net/v3/{}/messages".format(settings.MAILGUN_DOMAIN),
+        f"https://api.eu.mailgun.net/v3/{settings.MAILGUN_DOMAIN}/messages",
         auth=("api", api_key),
         data=payload,
     )
@@ -153,7 +153,7 @@ def load_settings_from_yaml(yaml_path: str) -> CloudFunctionSettings:
 
 
 # Flask
-def serve_flask_endpoint(endpoint):  # pragma: no cover 
+def serve_flask_endpoint(endpoint):  # pragma: no cover
     app = Flask(__name__)  # pylint ignore=C0103  redefined for local/cloud deployment.
     app.debug = settings.DEBUG
     app.route("/", methods=["GET", "POST"])(lambda: endpoint(request))
@@ -187,14 +187,13 @@ def transcribe(req: Request):  # pylint: disable=R0914
         if file and allowed_file(file.filename):
             # Remove the file if it exists
             if os.path.exists(os.path.join(app.config["UPLOAD_FOLDER"], file.filename)):
-                os.remove(os.path.join(app.config["UPLOAD_FOLDER"], file.filename))  # pragma: no cover
+                os.remove(
+                    os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+                )  # pragma: no cover
             # Get the secure filename https://werkzeug.palletsprojects.com/en/1.0.x/utils/#werkzeug.utils.secure_filename
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
 
-            audio_data = decode_audio(
-                os.path.join(app.config["UPLOAD_FOLDER"], filename)
-            )
             try:
                 audio_length = str(
                     get_audio_length(
@@ -205,8 +204,22 @@ def transcribe(req: Request):  # pylint: disable=R0914
                 audio_length = "audio length not detected"
                 logging.error("Error detecting audio length: %s", e)
 
+            if float(audio_length) <= 60:
+                audio_data = decode_audio(
+                    os.path.join(app.config["UPLOAD_FOLDER"], filename),
+                )
+                transcription = get_transcript(audio_data)
+            else:
+                audio_data = decode_audio(
+                    os.path.join(app.config["UPLOAD_FOLDER"], filename),
+                    ss="0",
+                    t="60",
+                )  # pragma: no cover
+                transcription = (
+                    "🤖 First 60 seconds (voicemail >60 seconds): \n"
+                    + get_transcript(audio_data)
+                )  # pragma: no cover
             phone_number = get_phone_number(str(request.form.get("subject")))
-            transcription = get_transcript(audio_data)
             formatted_message = f"Voicemail from: {phone_number}\nLength: {audio_length}s\n{transcription}"
 
             try:
@@ -231,13 +244,27 @@ def transcribe(req: Request):  # pylint: disable=R0914
             except Exception as e:  # pragma: no cover
                 logging.error("Error: Email failed to send - %s", e)
                 return (
-                    json.dumps({"success": False, "message": "An error occured."}),
+                    json.dumps(
+                        {
+                            "success": False,
+                            "message": "An error occured whilst sending email.",
+                        }
+                    ),
                     400,
                     {
                         "ContentType": "application/json",
                         "Access-Control-Allow-Origin": settings.ACCESS_CONTROL_ORIGIN,
                     },
                 )
+        else:
+            return (
+                json.dumps({"success": False, "message": "Unsupported Media Type."}),
+                415,
+                {
+                    "ContentType": "application/json",
+                    "Access-Control-Allow-Origin": settings.ACCESS_CONTROL_ORIGIN,
+                },
+            )
     if req.method == "GET":
         return (
             json.dumps({"success": True, "message": "Get success"}),

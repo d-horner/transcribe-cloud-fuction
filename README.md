@@ -130,6 +130,7 @@ gcloud services enable cloudbuild.googleapis.com
 gcloud services enable logging.googleapis.com
 gcloud services enable appengine.googleapis.com
 gcloud services enable cloudfunctions.googleapis.com
+gcloud services enable speech.googleapis.com
 ~~~~
 
 
@@ -179,8 +180,16 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 gcloud iam service-accounts add-iam-policy-binding $PROJECT_ID@appspot.gserviceaccount.com \
  --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
  --role=roles/iam.serviceAccountUser
+# Add SA roles for Cloud Functions Developer
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+ --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
+ --role=roles/cloudfunctions.developer
+# Add SA roles for speech-to-text
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+ --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
+ --role=roles/speech.client
 # Add SA roles for Log Writer
-gcloud iam service-accounts add-iam-policy-binding $PROJECT_ID \
+gcloud projects add-iam-policy-binding $PROJECT_ID \
  --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
  --role=roles/logging.logWriter
 ~~~~
@@ -210,6 +219,8 @@ Remove or alter `HOST: "https://allied.sh/api/v4/projects/"` to `https://gitlab.
 ## Limitations
 
 This function was written with the purpose of using a time based Google App Script trigger to query unread emails with mp3/wav attachments, extract *UK* phone numbers (other countries and formats would require modification of the regex in `get_phone_number()`), get the transcript and email the content within the same Google Group thread.
+
+Audio files are transcribed synchronously via the Speech-To-Text API, thus they are limited to 60 seconds of audio. Audio is trimmed for files exceeding 60 seconds due to the intended use case. Refer to [https://cloud.google.com/speech-to-text/docs/async-recognize](https://cloud.google.com/speech-to-text/docs/async-recognize) for transcription of longer files.
 
 Mailgun is hardcoded within the script, although any transactional ESP could be substituted.
 

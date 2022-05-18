@@ -5,8 +5,10 @@ init-hook="from pylint.config import find_pylintrc; import os, sys; sys.path.app
 [MESSAGES CONTROL]
 # I0011 Warning locally suppressed using disable-msg
 disable=
+    C0103, # invalid module name
     C0411, # import order
     I0011,
+    R0911, # too many return statements
     W0404, # reimported
     W0703, # catchall
     no-member,

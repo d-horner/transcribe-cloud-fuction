@@ -15,7 +15,7 @@ deploy-production.sh
 .gcloudignore
 .git
 .gitignore
-.gitlab-ci.yaml
+.gitlab-ci.yml
 .gitlab-mr.sh
 .idea
 .isort.cfg
@@ -28,6 +28,7 @@ htmlcov
 pyproject.toml
 __init__.py
 README.md
+LICENCE
 setup.cfg
 tests
 .venv

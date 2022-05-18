@@ -1,23 +1,21 @@
 #!/usr/bin/env python
-import os
 import ffmpeg
-import json
+import os
 import pytest
 import re
-import requests
-from google.cloud import speech
+from functions_framework import create_app
 from main import (
-    app,
     CloudFunctionSettings,
-    load_settings_from_yaml,
-    send_email,
+    allowed_file,
+    app,
     decode_audio,
     get_audio_length,
-    get_transcript,
-    allowed_file,
     get_phone_number,
+    get_transcript,
+    load_settings_from_environment,
+    load_settings_from_yaml,
+    send_email,
 )
-from functions_framework import create_app
 from unittest.mock import patch
 
 
@@ -54,8 +52,8 @@ def test_get_audio_length__failure():
 def test_get_transcript__audio():
     transcript = get_transcript(decode_audio(os.path.join("tests/test_audio.mp3")))
     assert (
-        transcript
-        == "🤖 Transcript: to listen to the message please hold or to save it just hang up  hi"
+        transcript.upper()
+        == "🤖 Transcript: to listen to the message, please hold or to save it just hang up.  hi".upper()
     )  # nosec
 
 
@@ -134,18 +132,16 @@ def test_route__method_defined():
 
 @pytest.fixture(scope="module")
 def test_client():
-    """ Test client """
+    """Test client"""
     return create_app("transcribe", "main.py", "http").test_client()
 
 
 def test_get_route__success(test_client):
-    settings = load_settings_from_yaml(".env.yaml")
     response = test_client.get("/")
     assert response.status_code == 200  # nosec
 
 
 def test_head_route__failure(test_client):
-    settings = load_settings_from_yaml(".env.yaml")
     response = test_client.head("/")
     assert response.status_code == 400  # nosec
 
@@ -156,42 +152,50 @@ def test_post_route__failure__missing_token(test_client):
 
 
 def test_post_route__failure__missing_file(test_client):
-    settings = load_settings_from_yaml(".env.yaml")
     response = test_client.post("/", data={"token": "", "file": None})
     assert response.status_code == 302  # nosec
 
 
 def test_post_route__failure__file_type_not_allowed(test_client):
-    settings = load_settings_from_yaml(".env.yaml")
+    settings = load_settings_from_environment()
     test_file = open("tests/test_file.pdf", "rb")
-    response = test_client.post("/", data={
-        "token": settings.APPS_SCRIPT_TOKEN,
-        "file": test_file,
-    })
+    response = test_client.post(
+        "/",
+        data={
+            "token": settings.APPS_SCRIPT_TOKEN,
+            "file": test_file,
+            "subject": "test",
+            "from": "test@edwardsgrounds.co.uk",
+            "group": "test-branch@edwardsgrounds.co.uk",
+        },
+    )
     test_file.close()
-    assert response.status_code == 302  # nosec
+    assert response.status_code == 415  # nosec
 
 
 def test_post_route__success(test_client):
-    settings = load_settings_from_yaml(os.path.join(".env.yaml"))
     with patch("main.transcribe") as mock_post:
+        settings = load_settings_from_environment()
         test_file = open("tests/test_audio.mp3", "rb")
-        mock_post.return_value.status_code = 200    
-        response = test_client.post("/", data={
-            "token": "",
-            "file": test_file,
-            "subject": "test",
-            "from": "d.horner@edwardsgrounds.co.uk",
-            "group": "test-branch@edwardsgrounds.co.uk",
-        })
+        mock_post.return_value.status_code = 200
+        response = test_client.post(
+            "/",
+            data={
+                "token": settings.APPS_SCRIPT_TOKEN,
+                "file": test_file,
+                "subject": "test",
+                "from": "test@edwardsgrounds.co.uk",
+                "group": "test-branch@edwardsgrounds.co.uk",
+            },
+        )
         test_file.close()
         assert response.status_code == 200  # nosec
 
 
 def test_send_email__success():
-    with patch("main.send_email") as mock_post:    
+    with patch("main.send_email") as mock_post:
         settings = load_settings_from_yaml(".env.yaml")
-        mock_post.return_value == True
+        mock_post.return_value = True
         response = send_email(
             email_subject="subject",
             email_body="body",
@@ -203,9 +207,8 @@ def test_send_email__success():
 
 
 def test_send_email__failure():
-    with patch("main.send_email") as mock_post:    
-        settings = load_settings_from_yaml(".env.yaml")
-        mock_post.return_value.status_code == 400
+    with patch("main.send_email") as mock_post:
+        mock_post.return_value.status_code = 400
         response = send_email(
             email_subject="subject",
             email_body="body",
