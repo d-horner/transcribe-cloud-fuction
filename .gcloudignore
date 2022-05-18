@@ -15,7 +15,7 @@ deploy-production.sh
 .gcloudignore
 .git
 .gitignore
-.gitlab-ci.yaml
+.gitlab-ci.yml
 .gitlab-mr.sh
 .idea
 .isort.cfg

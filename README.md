@@ -180,6 +180,10 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 gcloud iam service-accounts add-iam-policy-binding $PROJECT_ID@appspot.gserviceaccount.com \
  --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
  --role=roles/iam.serviceAccountUser
+# Add SA roles for Cloud Functions Developer
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+ --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
+ --role=roles/cloudfunctions.developer
 # Add SA roles for speech-to-text
 gcloud projects add-iam-policy-binding $PROJECT_ID \
  --member=serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \

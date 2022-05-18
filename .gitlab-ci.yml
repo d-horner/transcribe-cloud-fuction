@@ -122,7 +122,7 @@ pytest-cov:
   services:
     - docker:dind
   before_script:
-    - apt-get -q update && apt-get -yfq install git ffmpeg
+    - apt-get -q update && apt-get -yfqq install git ffmpeg
     - echo "$GCLOUD_SERVICE_KEY_STAGING_FUNCTION" > "./.gcloud-logging-credentials"
     - pip install poetry
     - poetry config virtualenvs.in-project true
@@ -157,7 +157,7 @@ deploy_to_staging:
   tags:
     - docker
   before_script:
-    - apt-get -q update && apt-get -yfq install curl git gnupg2
+    - apt-get -q update && apt-get -yfqq install curl git gnupg2
     - echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -qy && apt-get install google-cloud-sdk -yqf
     - echo "$GCLOUD_SERVICE_KEY_STAGING_FUNCTION" > /tmp/gitlab-deploy-storage-sa.json
     - gcloud auth activate-service-account "$GCLOUD_SERVICE_ACCOUNT_STAGING_FUNCTION" --key-file /tmp/gitlab-deploy-storage-sa.json
@@ -220,7 +220,7 @@ deploy_to_production:
   variables:
     APP_ENV: production
   before_script:
-    - apt-get -q update && apt-get -yfq install curl git gnupg2
+    - apt-get -q update && apt-get -yfqq install curl git gnupg2
     - echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -qy && apt-get install google-cloud-sdk -yqf
     - echo "$GCLOUD_SERVICE_KEY_PRODUCTION_FUNCTION" > /tmp/gitlab-deploy-storage-sa.json
     - gcloud auth activate-service-account "$GCLOUD_SERVICE_ACCOUNT_PRODUCTION_FUNCTION" --key-file /tmp/gitlab-deploy-storage-sa.json
